@@ -9,9 +9,17 @@
 extern "C" {
 #endif
 
+/** Max number of simultaneously pressed keys (keyboard) */
+#define HID_KB_MAX_KEYS 6
+/** Max number of simultaneously pressed keys (consumer control) */
+#define HID_CONSUMER_MAX_KEYS 2
+
+/** OS-specific consumer keys, defined as "Reserved" in HID Usage Tables document */
+#define HID_CONSUMER_BRIGHTNESS_INCREMENT 0x006F
+#define HID_CONSUMER_BRIGHTNESS_DECREMENT 0x0070
+#define HID_CONSUMER_FN_GLOBE 0x029D
+
 #define HID_KEYBOARD_NONE 0x00
-// Remapping the colon key which is shift + ; to comma
-#define HID_KEYBOARD_COMMA HID_KEYBOARD_COLON
 
 /** HID keyboard modifier keys */
 enum HidKeyboardMods {
@@ -24,6 +32,7 @@ enum HidKeyboardMods {
     KEY_MOD_RIGHT_ALT = (1 << 14),
     KEY_MOD_RIGHT_GUI = (1 << 15),
 };
+
 
 /** ASCII to keycode conversion table */
 static const uint16_t hid_asciimap[] = {
@@ -61,20 +70,20 @@ static const uint16_t hid_asciimap[] = {
     HID_KEYBOARD_NONE, // US
     HID_KEYBOARD_SPACEBAR, // ' ' Space
     HID_KEYBOARD_1 | KEY_MOD_LEFT_SHIFT, // !
-    HID_KEYBOARD_2 | KEY_MOD_LEFT_SHIFT, // " 
+    HID_KEYBOARD_APOSTROPHE | KEY_MOD_LEFT_SHIFT, // "
     HID_KEYBOARD_3 | KEY_MOD_LEFT_SHIFT, // #
-    HID_KEYBOARD_4 | KEY_MOD_RIGHT_ALT, // $
+    HID_KEYBOARD_4 | KEY_MOD_LEFT_SHIFT, // $
     HID_KEYBOARD_5 | KEY_MOD_LEFT_SHIFT, // %
-    HID_KEYBOARD_6 | KEY_MOD_LEFT_SHIFT, // &
-    HID_KEYBOARD_BACKSLASH, // '
-    HID_KEYBOARD_8 | KEY_MOD_LEFT_SHIFT, // (
-    HID_KEYBOARD_9 | KEY_MOD_LEFT_SHIFT, // )
-    HID_KEYBOARD_BACKSLASH | KEY_MOD_LEFT_SHIFT, // *
-    HID_KEYBOARD_MINUS, // +
+    HID_KEYBOARD_7 | KEY_MOD_LEFT_SHIFT, // &
+    HID_KEYBOARD_APOSTROPHE, // '
+    HID_KEYBOARD_9 | KEY_MOD_LEFT_SHIFT, // (
+    HID_KEYBOARD_0 | KEY_MOD_LEFT_SHIFT, // )
+    HID_KEYBOARD_8 | KEY_MOD_LEFT_SHIFT, // *
+    HID_KEYBOARD_EQUAL_SIGN | KEY_MOD_LEFT_SHIFT, // +
     HID_KEYBOARD_COMMA, // ,
-    HID_KEYBOARD_SLASH, // -
+    HID_KEYBOARD_MINUS, // -
     HID_KEYBOARD_DOT, // .
-    HID_KEYBOARD_7 | KEY_MOD_LEFT_SHIFT, // /
+    HID_KEYBOARD_SLASH, // /
     HID_KEYBOARD_0, // 0
     HID_KEYBOARD_1, // 1
     HID_KEYBOARD_2, // 2
@@ -85,13 +94,13 @@ static const uint16_t hid_asciimap[] = {
     HID_KEYBOARD_7, // 7
     HID_KEYBOARD_8, // 8
     HID_KEYBOARD_9, // 9
-    HID_KEYBOARD_DOT | KEY_MOD_LEFT_SHIFT, // :
-    HID_KEYBOARD_COMMA | KEY_MOD_LEFT_SHIFT, // ;
-    0x64, // <
-    HID_KEYBOARD_0 | KEY_MOD_LEFT_SHIFT, // =
-    0x64 | KEY_MOD_LEFT_SHIFT, // >
-    HID_KEYBOARD_MINUS | KEY_MOD_LEFT_SHIFT, // ?
-    HID_KEYBOARD_2 | KEY_MOD_RIGHT_ALT, // @
+    HID_KEYBOARD_SEMICOLON | KEY_MOD_LEFT_SHIFT, // :
+    HID_KEYBOARD_SEMICOLON, // ;
+    HID_KEYBOARD_COMMA | KEY_MOD_LEFT_SHIFT, // <
+    HID_KEYBOARD_EQUAL_SIGN, // =
+    HID_KEYBOARD_DOT | KEY_MOD_LEFT_SHIFT, // >
+    HID_KEYBOARD_SLASH | KEY_MOD_LEFT_SHIFT, // ?
+    HID_KEYBOARD_2 | KEY_MOD_LEFT_SHIFT, // @
     HID_KEYBOARD_A | KEY_MOD_LEFT_SHIFT, // A
     HID_KEYBOARD_B | KEY_MOD_LEFT_SHIFT, // B
     HID_KEYBOARD_C | KEY_MOD_LEFT_SHIFT, // C
@@ -118,12 +127,12 @@ static const uint16_t hid_asciimap[] = {
     HID_KEYBOARD_X | KEY_MOD_LEFT_SHIFT, // X
     HID_KEYBOARD_Y | KEY_MOD_LEFT_SHIFT, // Y
     HID_KEYBOARD_Z | KEY_MOD_LEFT_SHIFT, // Z
-    HID_KEYBOARD_8 | KEY_MOD_RIGHT_ALT, // [
-    HID_KEYBOARD_MINUS | KEY_MOD_RIGHT_ALT, // bslash
-    HID_KEYBOARD_9 | KEY_MOD_RIGHT_ALT, // ]
-    HID_KEYBOARD_CLOSE_BRACKET | KEY_MOD_LEFT_SHIFT, // ^
-    HID_KEYBOARD_SLASH | KEY_MOD_LEFT_SHIFT, // _
-    HID_KEYBOARD_EQUAL_SIGN | KEY_MOD_LEFT_SHIFT , // `
+    HID_KEYBOARD_OPEN_BRACKET, // [
+    HID_KEYBOARD_BACKSLASH, // bslash
+    HID_KEYBOARD_CLOSE_BRACKET, // ]
+    HID_KEYBOARD_6 | KEY_MOD_LEFT_SHIFT, // ^
+    HID_KEYBOARD_MINUS | KEY_MOD_LEFT_SHIFT, // _
+    HID_KEYBOARD_GRAVE_ACCENT, // `
     HID_KEYBOARD_A, // a
     HID_KEYBOARD_B, // b
     HID_KEYBOARD_C, // c
@@ -150,12 +159,13 @@ static const uint16_t hid_asciimap[] = {
     HID_KEYBOARD_X, // x
     HID_KEYBOARD_Y, // y
     HID_KEYBOARD_Z, // z
-    HID_KEYBOARD_7 | KEY_MOD_RIGHT_ALT, // {
-    0x64 | KEY_MOD_RIGHT_ALT, // | 
-    HID_KEYBOARD_0 | KEY_MOD_RIGHT_ALT, // }
-    HID_KEYBOARD_CLOSE_BRACKET | KEY_MOD_RIGHT_ALT, // ~
-    HID_KEYBOARD_NONE // DEL
+    HID_KEYBOARD_OPEN_BRACKET | KEY_MOD_LEFT_SHIFT, // {
+    HID_KEYBOARD_BACKSLASH | KEY_MOD_LEFT_SHIFT, // |
+    HID_KEYBOARD_CLOSE_BRACKET | KEY_MOD_LEFT_SHIFT, // }
+    HID_KEYBOARD_GRAVE_ACCENT | KEY_MOD_LEFT_SHIFT, // ~
+    HID_KEYBOARD_NONE, // DEL
 };
+
 
 typedef struct {
     uint32_t vid;
@@ -187,13 +197,13 @@ enum HidMouseButtons {
  *
  * @return      true / false
  */
-bool furi_hal_hid_is_connected();
+bool furi_hal_hid_is_connected(void);
 
 /** Get USB HID keyboard leds state
  *
  * @return      leds state
  */
-uint8_t furi_hal_hid_get_led_state();
+uint8_t furi_hal_hid_get_led_state(void);
 
 /** Set USB HID connect/disconnect callback
  *
@@ -217,7 +227,7 @@ bool furi_hal_hid_kb_release(uint16_t button);
 /** Clear all pressed keys and send HID report
  *
  */
-bool furi_hal_hid_kb_release_all();
+bool furi_hal_hid_kb_release_all(void);
 
 /** Set mouse movement and send HID report
  *
@@ -256,6 +266,12 @@ bool furi_hal_hid_consumer_key_press(uint16_t button);
  */
 bool furi_hal_hid_consumer_key_release(uint16_t button);
 
+/** Clear all pressed consumer keys and send HID report
+ *
+ */
+bool furi_hal_hid_consumer_key_release_all(void);
+
 #ifdef __cplusplus
 }
 #endif
+
